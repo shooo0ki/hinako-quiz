@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { ShiftLog } from "@/data/logs";
 import { getTodayLogs } from "@/lib/dashboard";
-import { CalendarClock, NotebookPen, X } from "lucide-react";
+import { CalendarClock, NotebookPen, Trash2, X } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import Image from "next/image";
 
@@ -56,6 +56,10 @@ export default function LogsPage() {
       nextFocus: "",
     });
     setShowCongrats(true);
+  };
+
+  const handleDelete = (id: string) => {
+    setLogs((prev) => prev.filter((log) => log.id !== id));
   };
 
   return (
@@ -216,10 +220,21 @@ export default function LogsPage() {
               className="rounded-lg border border-border-strong/60 bg-background/60 p-3 text-sm"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-semibold">{log.date}</span>
-                <span className="text-xs text-muted-foreground">
-                  シフト: {log.shift || "未入力"}
-                </span>
+                <div className="flex flex-col">
+                  <span className="font-semibold">{log.date}</span>
+                  <span className="text-xs text-muted-foreground">
+                    シフト: {log.shift || "未入力"}
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
+                  onClick={() => handleDelete(log.id)}
+                >
+                  <Trash2 className="mr-1 h-4 w-4" />
+                  削除
+                </Button>
               </div>
               {log.trouble && (
                 <p className="mt-1 text-muted-foreground">困った: {log.trouble}</p>

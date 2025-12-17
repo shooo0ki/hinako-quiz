@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, ClipboardList, Home, User, Zap } from "lucide-react";
+import { BookOpen, ClipboardList, Heart, Home, User, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const tabs = [
   { href: "/", label: "ダッシュボード", icon: Home },
   { href: "/recipes", label: "レシピ", icon: BookOpen },
   { href: "/quiz", label: "クイズ", icon: Zap },
+  { href: "/cheer", label: "元気", icon: Heart },
   { href: "/logs", label: "ログ", icon: ClipboardList },
   { href: "/me", label: "自分", icon: User },
 ];

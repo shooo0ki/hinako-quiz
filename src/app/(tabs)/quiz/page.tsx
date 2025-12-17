@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { QUIZ_QUESTIONS } from "@/data/quiz";
-import { Brain, Coffee, ListChecks, RotateCcw, Settings2, Timer } from "lucide-react";
+import { Brain, Coffee, ListChecks, RotateCcw, Timer } from "lucide-react";
 
 type MistakeCounts = Record<string, number>;
 
@@ -30,7 +30,7 @@ export default function QuizPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(5);
-  const [autoTimeoutMiss, setAutoTimeoutMiss] = useState(true);
+  const [autoTimeoutMiss] = useState(false);
   const [hasAnswered, setHasAnswered] = useState(false);
   const [answered, setAnswered] = useState(() => {
     if (typeof window === "undefined") return 0;
@@ -170,15 +170,9 @@ export default function QuizPage() {
               <Brain className="h-4 w-4 text-primary" />
               出題数: 100問（カスタム・例外対応含む）
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-2 text-xs"
-              onClick={() => setAutoTimeoutMiss((prev) => !prev)}
-            >
-              <Settings2 className="h-4 w-4" />
-              タイムアウト自動ミス: {autoTimeoutMiss ? "ON" : "OFF"}
-            </Button>
+            <div className="rounded-full border border-border-strong/70 bg-background/70 px-3 py-1 text-xs">
+              タイムアウト自動ミス: OFF
+            </div>
           </div>
 
           <div className="space-y-3 rounded-xl border border-border-strong/70 bg-background/60 p-4">
@@ -238,7 +232,7 @@ export default function QuizPage() {
 
             {showAnswer && (
               <div className="space-y-2 rounded-lg border border-border-strong/70 bg-card/80 p-4">
-                <p className="text-sm font-semibold text-primary">
+                <p className="text-base font-semibold text-foreground">
                   答え: {currentQuestion.answer}
                 </p>
                 {currentQuestion.detail && (
