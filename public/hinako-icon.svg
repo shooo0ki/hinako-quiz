@@ -1,0 +1,25 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hinako quiz icon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FAFAF7"/>
+      <stop offset="100%" stop-color="#F2F2ED"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <circle cx="256" cy="172" r="88" fill="#E6EFE8"/>
+  <rect x="248" y="96" width="16" height="72" rx="8" fill="#2F5D50"/>
+  <rect x="140" y="142" width="232" height="42" rx="14" fill="#D7E5DD"/>
+  <rect x="156" y="176" width="200" height="220" rx="32" fill="#E6EFE8" stroke="#2F5D50" stroke-width="4"/>
+  <rect x="184" y="204" width="144" height="132" rx="20" fill="#FFFFFF" opacity="0.9"/>
+  <rect x="188" y="208" width="136" height="20" rx="10" fill="#D7E5DD"/>
+  <rect x="172" y="356" width="168" height="28" rx="10" fill="#D7E5DD"/>
+  <circle cx="256" cy="260" r="12" fill="#2F5D50"/>
+  <circle cx="256" cy="296" r="10" fill="#9A6B3F"/>
+  <circle cx="256" cy="332" r="8" fill="#2F5D50"/>
+  <text x="256" y="408" text-anchor="middle" font-size="44" font-family="Inter, 'Helvetica Neue', Arial, sans-serif" fill="#2F5D50" font-weight="700">
+    HINAKO
+  </text>
+  <text x="256" y="448" text-anchor="middle" font-size="22" font-family="Inter, 'Helvetica Neue', Arial, sans-serif" fill="#888888" font-weight="600">
+    5s QUIZ · LOG
+  </text>
+</svg>

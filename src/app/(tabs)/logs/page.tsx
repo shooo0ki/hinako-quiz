@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { ShiftLog } from "@/data/logs";
 import { getTodayLogs } from "@/lib/dashboard";
-import { CalendarClock, NotebookPen } from "lucide-react";
+import { CalendarClock, NotebookPen, X } from "lucide-react";
 import { v4 as uuid } from "uuid";
+import Image from "next/image";
 
 const STORAGE_KEY = "hinako-shift-logs";
 
@@ -32,6 +33,7 @@ export default function LogsPage() {
     customFails: "",
     nextFocus: "",
   });
+  const [showCongrats, setShowCongrats] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -53,6 +55,7 @@ export default function LogsPage() {
       customFails: "",
       nextFocus: "",
     });
+    setShowCongrats(true);
   };
 
   return (
@@ -62,6 +65,29 @@ export default function LogsPage() {
         <h1 className="text-3xl font-semibold tracking-tight">シフト記録</h1>
       </header>
 
+      {showCongrats && (
+        <Card className="border-border-strong/70 bg-card/80">
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+            <div className="shrink-0 overflow-hidden rounded-lg border border-border-strong/70 bg-background/60">
+              <Image
+                src="/hinako-congrats.jpg"
+                alt="今日もお疲れさま！"
+                width={200}
+                height={200}
+                className="h-full w-full object-cover"
+                priority
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-lg font-semibold text-foreground">今日も頑張ったね！</p>
+              <p className="text-sm text-muted-foreground">
+                ログを1分で書けたらそれでOK。無理せず続けよう。
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="border-border-strong/70 bg-card/80">
         <CardHeader className="space-y-2">
           <CardTitle className="flex items-center gap-2 text-lg">
@@ -70,17 +96,17 @@ export default function LogsPage() {
           </CardTitle>
           <CardDescription>完璧さより継続重視。必須項目なし。</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
-              <Label htmlFor="date">日付</Label>
-              <Input
-                id="date"
-                type="date"
-                value={form.date}
-                onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-              />
-            </div>
+          <CardContent className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="date">日付</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={form.date}
+                  onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                />
+              </div>
             <div className="space-y-1">
               <Label htmlFor="shift">シフト時間</Label>
               <Input
@@ -135,6 +161,37 @@ export default function LogsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {showCongrats && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-border-strong/70 bg-card shadow-2xl">
+            <button
+              type="button"
+              className="absolute right-3 top-3 rounded-full border border-border-strong/70 bg-background/80 p-2 text-muted-foreground transition hover:text-foreground"
+              onClick={() => setShowCongrats(false)}
+              aria-label="閉じる"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="w-full">
+              <Image
+                src="/hinako-congrats.jpg"
+                alt="今日も頑張ったね！"
+                width={1200}
+                height={800}
+                className="h-[320px] w-full object-cover sm:h-[440px]"
+                priority
+              />
+            </div>
+            <div className="space-y-1 px-4 py-4 sm:px-6 sm:py-5">
+              <p className="text-2xl font-semibold text-foreground">お疲れさま！今日も頑張ったね</p>
+              <p className="text-sm text-muted-foreground">
+                ログを書いたらひと息つこう。続けるだけで十分えらい。
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Card className="border-border-strong/70 bg-card/80">
         <CardHeader className="flex items-center justify-between">
