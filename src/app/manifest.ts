@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "ひなこ専用 スタバ5秒クイズ",
-    short_name: "ひなこ5秒クイズ",
+    name: "ひなこ用スタバアプリ",
+    short_name: "ひなこ用",
     description:
       "ひなこが5秒で正しいカスタム判断を鍛えるためのクイズアプリ",
     start_url: "/",

@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ひなこ専用 スタバ5秒クイズ",
-  description: "ひなこのためのバリスタ向け5秒瞬発力トレーニングアプリ",
+  title: "ひなこ用スタバアプリ",
+  description: "ひなこ専用のバリスタ向け5秒トレーニング＆ログ",
 };
 
 export default function RootLayout({
