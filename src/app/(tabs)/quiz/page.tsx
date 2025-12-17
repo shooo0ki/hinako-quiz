@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -13,90 +12,107 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { QUIZ_QUESTIONS } from "@/data/quiz";
-import { Brain, Coffee, ListChecks, RotateCcw, Timer } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Brain, Coffee, Heart, ListChecks, Timer, Trash2 } from "lucide-react";
 
 type MistakeCounts = Record<string, number>;
+type MistakeStateLegacy = { date: string; counts: MistakeCounts };
+type Mode = "all" | "mistakes" | "favorites";
 
-type MistakeState = {
-  date: string;
-  counts: MistakeCounts;
-};
-
-const STORAGE_KEY = "hinako-mistakes-v2";
+const MISTAKES_KEY = "hinako-mistakes-v3";
 const QUIZ_PROGRESS_KEY = "hinako-quiz-progress";
+const FAVORITES_KEY = "hinako-favorites";
 
 export default function QuizPage() {
-  const today = new Date().toISOString().slice(0, 10);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(5);
-  const [autoTimeoutMiss] = useState(false);
   const [hasAnswered, setHasAnswered] = useState(false);
+  const [mode, setMode] = useState<Mode>("all");
+
   const [answered, setAnswered] = useState(() => {
     if (typeof window === "undefined") return 0;
     const stored = localStorage.getItem(QUIZ_PROGRESS_KEY);
     if (!stored) return 0;
     try {
       const parsed = JSON.parse(stored) as { date: string; answered: number };
+      const today = new Date().toISOString().slice(0, 10);
       if (parsed.date === today) return parsed.answered || 0;
       return 0;
     } catch {
       return 0;
     }
   });
-  const [mistakeState, setMistakeState] = useState<MistakeState>(() => {
-    if (typeof window === "undefined") return { date: today, counts: {} };
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return { date: today, counts: {} };
+
+  const [mistakes, setMistakes] = useState<MistakeCounts>(() => {
+    if (typeof window === "undefined") return {};
+    const stored = localStorage.getItem(MISTAKES_KEY);
+    if (!stored) return {};
     try {
-      const parsed = JSON.parse(stored) as MistakeState;
-      if (parsed.date !== today) return { date: today, counts: {} };
+      const parsed = JSON.parse(stored) as MistakeStateLegacy | MistakeCounts;
+      if ("counts" in parsed) return parsed.counts || {};
       return parsed;
     } catch {
-      return { date: today, counts: {} };
+      return {};
     }
   });
 
-  const mistakes = mistakeState.date === today ? mistakeState.counts : {};
-  const currentQuestion = QUIZ_QUESTIONS[currentIndex];
-  const progressValue = ((currentIndex + 1) / QUIZ_QUESTIONS.length) * 100;
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    const stored = localStorage.getItem(FAVORITES_KEY);
+    if (!stored) return [];
+    try {
+      return JSON.parse(stored) as string[];
+    } catch {
+      return [];
+    }
+  });
 
-  // persist mistakes
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ date: today, counts: mistakes }),
-    );
-  }, [mistakes, today]);
+  const pool = useMemo(() => {
+    if (mode === "mistakes") {
+      return QUIZ_QUESTIONS.filter((q) => (mistakes[q.id] || 0) > 0);
+    }
+    if (mode === "favorites") {
+      return QUIZ_QUESTIONS.filter((q) => favorites.includes(q.id));
+    }
+    return QUIZ_QUESTIONS;
+  }, [mode, mistakes, favorites]);
+
+  const currentQuestion = pool[currentIndex] ?? pool[0];
+  const progressValue = pool.length
+    ? ((currentIndex + 1) / pool.length) * 100
+    : 0;
+  const isFavorite = currentQuestion
+    ? favorites.includes(currentQuestion.id)
+    : false;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     localStorage.setItem(
       QUIZ_PROGRESS_KEY,
-      JSON.stringify({ date: today, answered }),
+      JSON.stringify({
+        date: new Date().toISOString().slice(0, 10),
+        answered,
+      }),
     );
-  }, [answered, today]);
+  }, [answered]);
 
-  // reset timer when question changes
   useEffect(() => {
-    setSecondsLeft(5);
-    setShowAnswer(false);
-    setHasAnswered(false);
+    if (typeof window === "undefined") return;
+    localStorage.setItem(MISTAKES_KEY, JSON.stringify(mistakes));
+  }, [mistakes]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+  }, [favorites]);
+
+  useEffect(() => {
     const timer = window.setInterval(() => {
       setSecondsLeft((prev) => Math.max(0, prev - 1));
     }, 1000);
     return () => clearInterval(timer);
-  }, [currentIndex]);
-
-  // auto-miss on timeout
-  useEffect(() => {
-    if (!autoTimeoutMiss) return;
-    if (secondsLeft === 0 && !hasAnswered) {
-      setShowAnswer(true);
-      handleNext(false, true);
-    }
-  }, [secondsLeft, autoTimeoutMiss, hasAnswered]);
+  }, [currentIndex, pool.length]);
 
   const topMistakes = useMemo(() => {
     return Object.entries(mistakes)
@@ -106,41 +122,55 @@ export default function QuizPage() {
         count,
       }))
       .filter((entry) => entry.question)
-      .slice(0, 4);
+      .slice(0, 6);
   }, [mistakes]);
 
   const goToQuestion = (idx: number) => {
-    setCurrentIndex(idx);
+    resetForNewQuestion(idx);
   };
 
-  const handleNext = (wasCorrect: boolean, auto = false) => {
-    if (hasAnswered && !auto) {
-      return;
-    }
+  const handleNext = (wasCorrect: boolean) => {
+    if (hasAnswered) return;
+    if (!currentQuestion) return;
     setHasAnswered(true);
     setAnswered((prev) => prev + 1);
     if (!wasCorrect) {
-      setMistakeState((prev) => {
-        const counts = prev.date === today ? prev.counts : {};
-        return {
-          date: today,
-          counts: {
-            ...counts,
-            [currentQuestion.id]: (counts[currentQuestion.id] || 0) + 1,
-          },
-        };
-      });
+      setMistakes((prev) => ({
+        ...prev,
+        [currentQuestion.id]: (prev[currentQuestion.id] || 0) + 1,
+      }));
     }
-    const nextIndex = (currentIndex + 1) % QUIZ_QUESTIONS.length;
-    setTimeout(() => goToQuestion(nextIndex), auto ? 400 : 0);
+    if (pool.length > 0) {
+      const nextIndex = (currentIndex + 1) % pool.length;
+      setTimeout(() => goToQuestion(nextIndex), 0);
+    }
   };
 
-  const resetMistakes = () => setMistakeState({ date: today, counts: {} });
+  const handleRemoveMistake = (id: string) => {
+    setMistakes((prev) => {
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
+    });
+  };
 
-  const totalMistakes = Object.values(mistakes).reduce(
-    (a, b) => a + b,
-    0,
-  );
+  const toggleFavorite = () => {
+    if (!currentQuestion) return;
+    setFavorites((prev) =>
+      prev.includes(currentQuestion.id)
+        ? prev.filter((id) => id !== currentQuestion.id)
+        : [...prev, currentQuestion.id],
+    );
+  };
+
+  const totalMistakes = Object.values(mistakes).reduce((a, b) => a + b, 0);
+
+  const resetForNewQuestion = (idx: number) => {
+    setCurrentIndex(idx);
+    setSecondsLeft(5);
+    setShowAnswer(false);
+    setHasAnswered(false);
+  };
 
   return (
     <main className="space-y-4">
@@ -168,10 +198,35 @@ export default function QuizPage() {
             </div>
             <div className="flex items-center gap-2">
               <Brain className="h-4 w-4 text-primary" />
-              出題数: 100問（カスタム・例外対応含む）
+              出題: {pool.length}問
             </div>
-            <div className="rounded-full border border-border-strong/70 bg-background/70 px-3 py-1 text-xs">
-              タイムアウト自動ミス: OFF
+            <div className="flex gap-2 text-xs">
+              <ModePill
+                active={mode === "all"}
+                label="全部"
+                onClick={() => {
+                  setMode("all");
+                  resetForNewQuestion(0);
+                }}
+              />
+              <ModePill
+                active={mode === "mistakes"}
+                label="ミスのみ"
+                disabled={Object.keys(mistakes).length === 0}
+                onClick={() => {
+                  setMode("mistakes");
+                  resetForNewQuestion(0);
+                }}
+              />
+              <ModePill
+                active={mode === "favorites"}
+                label="マイリスト"
+                disabled={favorites.length === 0}
+                onClick={() => {
+                  setMode("favorites");
+                  resetForNewQuestion(0);
+                }}
+              />
             </div>
           </div>
 
@@ -179,67 +234,87 @@ export default function QuizPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
-                  Q{currentIndex + 1} / {QUIZ_QUESTIONS.length}
+                  {pool.length > 0
+                    ? `Q${currentIndex + 1} / ${pool.length}`
+                    : "出題なし"}
                 </p>
                 <p className="text-xl font-semibold leading-snug">
-                  {currentQuestion.prompt}
+                  {currentQuestion ? currentQuestion.prompt : "出題する問題がありません"}
                 </p>
               </div>
-              <div className="rounded-lg bg-primary/10 px-3 py-1 text-sm text-primary">
-                5秒判断
-              </div>
+              {currentQuestion && (
+                <div className="rounded-lg bg-primary/10 px-3 py-1 text-sm text-primary">
+                  5秒判断
+                </div>
+              )}
             </div>
 
-            <Progress value={(secondsLeft / 5) * 100} className="h-2" />
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>残り {secondsLeft.toString().padStart(2, "0")} 秒</span>
-              <span>
-                回答数 {answered} / 今日のミス {Object.keys(mistakes).length}
-              </span>
-            </div>
+            {currentQuestion ? (
+              <>
+                <Progress value={(secondsLeft / 5) * 100} className="h-2" />
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>残り {secondsLeft.toString().padStart(2, "0")} 秒</span>
+                  <span>
+                    回答数 {answered} / ミス {Object.keys(mistakes).length}
+                  </span>
+                </div>
 
-            <div className="flex flex-wrap gap-2">
-              {!showAnswer ? (
-                <Button onClick={() => setShowAnswer(true)} className="px-4">
-                  答えを見る
-                </Button>
-              ) : (
-                <>
+                <div className="flex flex-wrap gap-2">
+                  {!showAnswer ? (
+                    <Button onClick={() => setShowAnswer(true)} className="px-4">
+                      答えを見る
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        variant="default"
+                        className="px-4"
+                        onClick={() => handleNext(true)}
+                      >
+                        正解だった
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="px-4"
+                        onClick={() => handleNext(false)}
+                      >
+                        間違えた
+                      </Button>
+                    </>
+                  )}
                   <Button
-                    variant="default"
-                    className="px-4"
+                    variant="ghost"
+                    className="px-3 text-muted-foreground"
                     onClick={() => handleNext(true)}
                   >
-                    正解だった
+                    スキップ
                   </Button>
                   <Button
-                    variant="outline"
-                    className="px-4"
-                    onClick={() => handleNext(false)}
+                    variant={isFavorite ? "secondary" : "outline"}
+                    className="px-3"
+                    onClick={toggleFavorite}
                   >
-                    間違えた
+                    <Heart className="mr-2 h-4 w-4" />
+                    {isFavorite ? "マイリストから外す" : "マイリストに追加"}
                   </Button>
-                </>
-              )}
-              <Button
-                variant="ghost"
-                className="px-3 text-muted-foreground"
-                onClick={() => handleNext(true)}
-              >
-                スキップ
-              </Button>
-            </div>
+                </div>
 
-            {showAnswer && (
-              <div className="space-y-2 rounded-lg border border-border-strong/70 bg-card/80 p-4">
-                <p className="text-base font-semibold text-foreground">
-                  答え: {currentQuestion.answer}
-                </p>
-                {currentQuestion.detail && (
-                  <p className="text-sm text-muted-foreground">
-                    メモ: {currentQuestion.detail}
-                  </p>
+                {showAnswer && (
+                  <div className="space-y-2 rounded-lg border border-border-strong/70 bg-card/80 p-4">
+                    <p className="text-base font-semibold text-foreground">
+                      答え: {currentQuestion.answer}
+                    </p>
+                    {currentQuestion.detail && (
+                      <p className="text-sm text-muted-foreground">
+                        メモ: {currentQuestion.detail}
+                      </p>
+                    )}
+                  </div>
                 )}
+              </>
+            ) : (
+              <div className="rounded-lg border border-dashed border-border-strong/60 p-4 text-sm text-muted-foreground">
+                選択したモードに出題可能な問題がありません。モードを変えてください。
               </div>
             )}
           </div>
@@ -251,9 +326,11 @@ export default function QuizPage() {
             <Progress value={progressValue} className="h-2" />
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>
-                {currentIndex + 1} / {QUIZ_QUESTIONS.length}
+                {pool.length > 0 ? `${currentIndex + 1} / ${pool.length}` : "0 / 0"}
               </span>
-              <span>あと {QUIZ_QUESTIONS.length - (currentIndex + 1)} 問</span>
+              <span>
+                あと {pool.length > 0 ? pool.length - (currentIndex + 1) : 0} 問
+              </span>
             </div>
           </div>
         </CardContent>
@@ -267,56 +344,55 @@ export default function QuizPage() {
               よく間違える問題リスト
             </CardTitle>
             <CardDescription>
-              ミス回数の多い順に表示。タップで再挑戦できます。
+              ミス回数の多い順に表示。タップで再挑戦・削除できます。
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {topMistakes.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                まだ間違いは記録されていません。
-              </p>
-            )}
             {topMistakes.map(({ question, count }) => (
-              <button
+              <div
                 key={question?.id}
-                type="button"
                 className="w-full rounded-lg border border-border-strong/60 bg-background/60 px-3 py-2 text-left transition hover:border-primary/60"
-                onClick={() => {
-                  if (!question) return;
-                  const idx = QUIZ_QUESTIONS.findIndex((q) => q.id === question.id);
-                  if (idx >= 0) {
-                    goToQuestion(idx);
-                  }
-                }}
               >
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-medium">{question?.prompt}</p>
-                  <Badge variant="secondary" className="shrink-0">
-                    ミス {count}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="shrink-0">
+                      ミス {count}
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground"
+                      onClick={() => {
+                        if (!question) return;
+                        setMode("mistakes");
+                        resetForNewQuestion(0);
+                      }}
+                    >
+                      出題
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground"
+                      onClick={() => question && handleRemoveMistake(question.id)}
+                    >
+                      <Trash2 className="mr-1 h-4 w-4" />
+                      削除
+                    </Button>
+                  </div>
                 </div>
                 {question?.answer && (
                   <p className="mt-1 text-xs text-muted-foreground">
                     答え: {question.answer}
                   </p>
                 )}
-              </button>
-            ))}
-            {topMistakes.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground"
-                  onClick={resetMistakes}
-                >
-                  <RotateCcw className="mr-2 h-4 w-4" />
-                  今日のミス履歴をリセット
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  日付が変わると自動でリセットされます。
-                </p>
               </div>
+            ))}
+            {topMistakes.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                ミス履歴はありません。間違えた問題がここに溜まります。
+              </p>
             )}
           </CardContent>
         </Card>
@@ -331,7 +407,7 @@ export default function QuizPage() {
           <CardContent className="space-y-3">
             <div className="rounded-lg border border-border-strong/70 bg-background/60 p-3">
               <div className="flex items-center justify-between text-sm">
-                <span>今日のミス累計</span>
+                <span>ミス累計</span>
                 <Badge variant="outline">{totalMistakes} 件</Badge>
               </div>
               <Progress
@@ -339,19 +415,48 @@ export default function QuizPage() {
                 className="mt-2 h-2"
               />
               <p className="mt-1 text-xs text-muted-foreground">
-                5件以内に抑えられたらクリア。無理しないでリセットもOK。
+                5件以内に抑えられたらクリア。ミス一覧で個別削除できます。
               </p>
             </div>
             <div className="rounded-lg border border-border-strong/70 bg-background/60 p-3 text-sm text-muted-foreground">
-              ・「間違えた」を押した問題はリストに保存されます。
-              <br />
-              ・リストから直接再挑戦できます。
-              <br />
-              ・ミス履歴は日付単位で保存されます（ひなこ専用）。
+              ・「間違えた」を押した問題はリストに保存されます。<br />
+              ・リストから直接再挑戦できます。<br />
+              ・ミス履歴は日付に依存せず残ります（個別削除可能）。<br />
+              ・マイリストを使うと好きな問題だけ出題できます。
             </div>
           </CardContent>
         </Card>
       </div>
     </main>
+  );
+}
+
+function ModePill({
+  active,
+  label,
+  onClick,
+  disabled,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "rounded-full border px-3 py-1 transition",
+        active
+          ? "border-primary bg-primary/20 text-primary"
+          : "border-border-strong/70 text-muted-foreground hover:text-foreground",
+        disabled && "opacity-50 cursor-not-allowed",
+      )}
+      aria-pressed={active}
+    >
+      {label}
+    </button>
   );
 }
