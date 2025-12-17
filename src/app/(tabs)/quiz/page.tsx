@@ -50,8 +50,13 @@ export default function QuizPage() {
     if (!stored) return {};
     try {
       const parsed = JSON.parse(stored) as MistakeStateLegacy | MistakeCounts;
-      if ("counts" in parsed) return parsed.counts || {};
-      return parsed;
+      if (parsed && typeof parsed === "object" && "counts" in parsed) {
+        return (parsed as MistakeStateLegacy).counts || {};
+      }
+      if (parsed && typeof parsed === "object") {
+        return parsed as MistakeCounts;
+      }
+      return {};
     } catch {
       return {};
     }
